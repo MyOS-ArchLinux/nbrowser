@@ -3,8 +3,8 @@
 ```
 - auto detect installed browsers
 - auto remove tracking elements from URLs (basic)
-- !bang
-- ?search
+- !bangs
+- ?searchengines
 - ...
 ```
 
