@@ -5,5 +5,5 @@ Comment=Open in browser
 Type=Application
 Exec=nbrowser %u
 Icon=browser
-MimeType=application/pdf;text/html;text/xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/freetube;x-scheme-handler/browser;
+MimeType=application/pdf;text/html;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/freetube;x-scheme-handler/browser;
 Terminal=false
