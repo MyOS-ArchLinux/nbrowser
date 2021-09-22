@@ -24,6 +24,7 @@ sudo make install
 
 ## External links
 - [WIKI](https://github.com/MyOS-ArchLinux/nbrowser/wiki/)
+- [Config](https://github.com/MyOS-ArchLinux/nbrowser/wiki/Config)
 - [FAQ](https://github.com/MyOS-ArchLinux/nbrowser/wiki/FAQ)
 - [Community Plugins](https://github.com/community-plugins/nbrowser-plugins)
 
