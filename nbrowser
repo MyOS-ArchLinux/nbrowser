@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+# nbrowser v0.1
+# author : odnar-dev <https://github.com/odnar-dev>
+# source : https://github.com/MyOS-ArchLinux/nbrowser
+# license: GPLv3+ <https://gnu.org/licenses/gpl.html>
+# shellcheck disable=SC2190,SC2086,SC1091
+
+NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
+NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
+
+declare -A ENGINES
+
+ENGINES+=(["duckduckgo"]="https://duckduckgo.com/?q=")
+ENGINES+=(["ddg"]="https://duckduckgo.com/?q=")
+ENGINES+=(["google"]="https://www.google.com/search?q=")
+ENGINES+=(["startpage"]="https://www.startpage.com/do/search?query=")
+
+ENGINES+=(["archwiki"]="https://wiki.archlinux.org/index.php?title=Special:Search&search=")
+ENGINES+=(["aur"]="https://aur.archlinux.org/packages/?O=0&SeB=nd&outdated=&SB=n&SO=a&PP=50&do_Search=Go&K=")
+
+ENGINES+=(["git"]="https://github.com/search?q=")
+ENGINES+=(["github"]="https://github.com/search?q=")
+
+ENGINES+=(["mal"]="https://myanimelist.net/search/all?q=")
+ENGINES+=(["imdb"]="https://www.imdb.com/find?q=")
+ENGINES+=(["tmdb"]="https://www.themoviedb.org/search?query=")
+ENGINES+=(["tvdb"]="https://www.thetvdb.com/search?query=")
+
+has() {
+	case "$(command -v "$1" 2>/dev/null)" in
+		alias*|"") return 1
+	esac
+}
+
+_pemx() {
+	if has 'rofi'; then
+		rofi -e "error: $1"
+	else
+		>&2 printf '\033[31;1merror :\033[m %s\n' "$1"
+	fi
+	exit 1
+}
+
+_notify(){
+	rofi -e "$@"
+}
+
+_choose(){
+	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit
+}
+
+# Check for installed browsers
+## keep the first place to special action
+browser_count=1
+
+## firefox based browser
+for prog in librewolf firefox icecat palemoon; do
+	if has "$prog" ; then
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		# add private window
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --private-window"
+	fi
+done
+
+## chromium based browser
+for prog in chromium brave vivaldi-stable opera; do
+	if has "$prog" ; then
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		# add private window
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --incognito"
+	fi
+done
+
+## other browsers
+for prog in badwolf qutebrowser ephemeral ; do
+	if has "$prog" ; then
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+	fi
+done
+
+## custom config
+[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] &&	source "${NBROWSER_CONFIG_DIR}/config"
+
+if ! has _clean_url ;then
+	_clean_url(){
+		local IN="${*// /+}"
+		local OUT=""
+		IN="${IN//&amp;/&}"
+		IN=$(printf '%b\n' "${IN//%/\\x}")
+		IN="${IN// /+}"
+		parameters=$(echo "${IN}" | tr "&|?" "\n")
+		if [ ! "$(echo "$parameters" | wc -l)" == "1" ] ;then
+			for parameter in $parameters;	do
+				parameter_count=$((parameter_count+1))
+				case "$parameter" in
+					utm_*|ga_source*|ga_medium*|ga_term*|ga_campaign*|ga_content*|ga_place*|ga_*|gclid*|gclsrc*|fb_action_ids*|referer=*|\
+					fb_action_types*|fb_ref*|fb_source*|fbclid*|fbadid*|gs_l*|otm_*|cmpid*|os_ehash*|hmb_campaign*|hmb_medium*| \
+					hmb_source*|ref_*|yclid*|action_object_map*|action_type_map*|action_ref_map*|mkt_tok*|amp=1|stm_*|ref=*| \
+					_hsenc*|_hsmi*|igshid*|mc_cid*|mc_eid*|oly_anon_id*|oly_enc_id*|otc*|wickedid*|soc_src*|soc_trk*|_openstat*|ICID*|rb_clickid*|via*|sref=*)
+						;;
+					*) 	[ "$parameter_count" == 1 ] && OUT="$OUT$parameter?" || OUT="$OUT$parameter&"
+						;;
+				esac
+			done
+			OUT=${OUT%?}
+		else
+			OUT="$IN"
+		fi
+		echo "$OUT"
+	}
+fi
+
+if ! has _copy_to_clipboard ;then
+	_copy_to_clipboard(){
+		printf '%s\n' "$@" | xclip -selection clipboard ;
+	}
+fi
+
+open_a_browser(){
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'open a browser' -i -format "i s" -l "$((browser_count-1))")
+
+	[ -z "${selected_browser}" ] && exit 0
+
+	case "${selected_browser}" in
+		"-1 "*)
+			main ${selected_browser/-1 }
+			;;
+		*)
+			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
+			{ setsid -f ${selected_browser} >/dev/null 2>&1 ; }
+			;;
+	esac
+
+}
+
+open_video_with(){
+	selected_action=$(printf '%s\n' "Play" "Download" "Open in Browser" | rofi -dmenu -p 'Open Video with' -mesg "${@//&/&amp;}" -i -l 3)
+
+	case "$selected_action" in
+		"Play")
+			if has 'play' ; then
+				{ setsid -f play "play://$*" >/dev/null 2>&1 ; }
+			else
+				{ setsid -f mpv "$*" >/dev/null 2>&1 ; }
+			fi
+			;;
+		"Download")
+			if has 'dwld' ; then
+				{ setsid -f dwld "dwld://$*" >/dev/null 2>&1 ; }
+			else
+				{ setsid -f "${TERMINAL:-st}" -e sh -c "youtube-dl $*" >/dev/null 2>&1 ; }
+			fi
+			;;
+		"Open in Browser")
+			open_in_browser "$1"
+			;;
+	esac
+
+}
+
+open_picture_with(){
+	selected_action=$(printf '%s\n' "View" "Edit with Gimp" "Open in Browser" | rofi -dmenu -p 'Open Picture with' -mesg "${@//&/&amp;}" -i -l 3)
+
+	case "$selected_action" in
+		"View")
+			if has 'sxiv' ; then
+				curl -sL "$1" > "/tmp/$(echo "$@" | sed "s/.*\///;s/%20/ /g")" && \
+				{ setsid -f sxiv -a "/tmp/$(echo "$@" | sed "s/.*\///;s/%20/ /g")" >/dev/null 2>&1 ; }
+			else
+				_pemx "sxiv is no installed in your system!"
+			fi
+			;;
+		"Edit with Gimp")
+			if has 'gimp' ; then
+				{ setsid -f gimp "$*" >/dev/null 2>&1 ; }
+			else
+				_pemx "gimp is no installed in your system!"
+			fi
+			;;
+		"Open in Browser")
+			open_in_browser "$1"
+			;;
+	esac
+
+}
+
+open_in_browser(){
+	# add clipboard
+	browser_count=$((browser_count+1))
+	installed_browsers[$browser_count]="Copy to clipboard"
+
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open link with' -mesg "${@//&/&amp;}" -i -l "$browser_count" )
+
+	[ -z "${selected_browser}" ] && exit 0
+
+	case "${selected_browser}" in
+		"!p")
+			open_video_with "$*"
+			;;
+		"Copy to clipboard"*": ")
+			_copy_to_clipboard "$*"
+			;;
+		*)
+			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
+			echo "opening : $selected_browser"
+			{ setsid -f $selected_browser "$*" >/dev/null 2>&1 ; }
+			;;
+	esac
+
+}
+
+url_handler(){
+	cleanurl=$(_clean_url "$*")
+	cleanurl=${cleanurl:-$1}
+	case "$cleanurl" in
+		**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
+			open_video_with "$cleanurl"
+			;;
+		*png|*jpg|*jpe|*jpeg|*gif|*.jpg\?r=*)
+			open_picture_with "$cleanurl"
+			;;
+		*)
+			open_in_browser "$cleanurl"
+			;;
+	esac
+}
+
+main(){
+	case "$1" in
+		gemini://*)
+			open_in_browser "https://proxy.vulpes.one/gemini/${1:9}"
+			;;
+		http://*|https://*)
+			url_handler "$@"
+			;;
+		browser://http://*|browser://https://*)
+			url_handler "${1:10}"
+			;;
+		freetube://http://*|freetube://https://*)
+			url_handler "${1:11}"
+			;;
+
+		# my own shortcuts
+		"git/"*)
+			url_handler "https://github.com/${1:4}"
+			;;
+		"mal/"*)
+			url_handler "https://myanimelist.net/anime/${1:4}"
+			;;
+		"aur/"*)
+			url_handler "https://aur.archlinux.org/packages/${1:4}"
+			;;
+		"pypi/"*)
+			url_handler "https://pypi.org/project/${1:5}"
+			;;
+		"twitch/"*)
+			url_handler "https://www.twitch.tv/${1:7}"
+			;;
+
+		# BANGS
+		"!"*)
+			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${1/?}" ] ; then
+				source "${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
+				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
+				shift
+				[ -n "$1" ] && nbrowser_bang "$*"
+			else
+				url_handler "https://duckduckgo.com/?q=$*"
+			fi
+			;;
+
+		# Search Engines
+		"?"*)
+			local engine="${1/?}"
+			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
+				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
+				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
+				shift
+				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+			elif [ -n "${ENGINES[$engine]}" ]; then
+				shift
+				url_handler "${ENGINES[$engine]}$*"
+			else
+				_pemx "search engine '${engine}' is not supported!"
+			fi
+			;;
+		*)
+			if [ -e "$*" ] ; then
+				case $@ in
+					*.pdf)
+						# handle local pdf
+						[ -z "$NBROWSER_PDF_VIEWER" ] || installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
+							;;
+					*.html) 
+						# handle local html
+						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor 	:	${NBROWSER_HTML_EDITOR}"
+				esac
+				open_in_browser "$*"
+
+			elif [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
+				source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+			elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
+				url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
+			else
+				url_handler "https://duckduckgo.com/?q=$*"
+			fi
+			;;
+	esac
+}
+
+if [ -z "$1" ]; then
+	open_a_browser;
+else
+	# remove space from the start and the end of query
+	query=${*#${*%%[![:space:]]*}}
+	query=${query%${query##*[![:space:]]}}
+	main ${query}
+fi
