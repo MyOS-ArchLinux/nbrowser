@@ -1,4 +1,9 @@
 # nbrowser
+<p align="center">
+<img alt="screenshot" src="https://user-images.githubusercontent.com/73726132/134768611-e2a1db0e-e9e0-45d4-872d-25dd97718952.png">
+rofi with DarkBlue theme
+</p>
+
 ## Features
 ```
 - auto detect installed browsers
