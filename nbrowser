@@ -46,7 +46,7 @@ _notify(){
 }
 
 _choose(){
-	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit
+	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
 }
 
 # Check for installed browsers
@@ -268,7 +268,7 @@ main(){
 				source "${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
 				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
 				shift
-				[ -n "$1" ] && nbrowser_bang "$*"
+				nbrowser_bang "$*"
 			else
 				url_handler "https://duckduckgo.com/?q=$*"
 			fi
