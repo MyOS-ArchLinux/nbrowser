@@ -14,11 +14,13 @@ rofi with DarkBlue theme
 ```
 
 ## Requirements
-```
-- rofi : menu
-- mpv  : video player
-- sxiv : image viewer
-```
+- `rofi`
+- a browser
+- Video Player : `mpv` or `vlc`
+- Video Downloader : `youtube-dl` or `yt-dlp`
+- Image Viewer : `sxiv` or `feh`
+- Image Editor : `gimp`
+- Clipboard managers : `xclip`
 
 ## Installation
 ```
