@@ -1,6 +1,6 @@
 # nbrowser
 <p align="center">
-<img alt="screenshot" src="https://user-images.githubusercontent.com/73726132/134768611-e2a1db0e-e9e0-45d4-872d-25dd97718952.png">
+<img alt="screenshot" src="https://user-images.githubusercontent.com/73726132/136132026-aa2a685e-965c-44b5-b9c3-5a043dc2539a.gif">
 rofi with DarkBlue theme
 </p>
 
