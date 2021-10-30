@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.2
+# nbrowser v0.2.x
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
@@ -23,6 +23,7 @@ ENGINES=(
 	["tmdb"]="https://www.themoviedb.org/search?query="
 	["tvdb"]="https://www.thetvdb.com/search?query="
 	["mal"]="https://myanimelist.net/search/all?q="
+	["youtube"]="https://www.youtube.com/results?search_query="
 )
 
 has() {
@@ -94,7 +95,7 @@ if ! has _clean_url ;then
 		IN="${IN// /+}"
 		parameters=$(echo "${IN}" | tr "&|?" "\n")
 		if [ ! "$(echo "$parameters" | wc -l)" == "1" ] ;then
-			for parameter in $parameters;	do
+			for parameter in $parameters; do
 				parameter_count=$((parameter_count+1))
 				case "$parameter" in
 					utm_*|ga_source*|ga_medium*|ga_term*|ga_campaign*|ga_content*|ga_place*|ga_*|gclid*|gclsrc*|fb_action_ids*|referer=*|\
@@ -102,7 +103,7 @@ if ! has _clean_url ;then
 					hmb_source*|ref_*|yclid*|action_object_map*|action_type_map*|action_ref_map*|mkt_tok*|amp=1|stm_*|ref=*| \
 					_hsenc*|_hsmi*|igshid*|mc_cid*|mc_eid*|oly_anon_id*|oly_enc_id*|otc*|wickedid*|soc_src*|soc_trk*|_openstat*|ICID*|rb_clickid*|via*|sref=*)
 						;;
-					*) 	[ "$parameter_count" == 1 ] && OUT="$OUT$parameter?" || OUT="$OUT$parameter&"
+					*)	[ "$parameter_count" == 1 ] && OUT="$OUT$parameter?" || OUT="$OUT$parameter&"
 						;;
 				esac
 			done
@@ -303,7 +304,7 @@ main(){
 							;;
 					*.html)
 						# handle local html
-						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor 	:	${NBROWSER_HTML_EDITOR}"
+						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
 				esac
 				open_in_browser "$*"
 
