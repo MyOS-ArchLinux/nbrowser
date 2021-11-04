@@ -8,7 +8,7 @@ rofi with DarkBlue theme
 ```
 - auto detect installed browsers
 - auto remove tracking elements from URLs (basic)
-- !bangs
+- !bangs and !ubangs
 - ?search engines
 - ...
 ```
