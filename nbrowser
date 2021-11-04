@@ -206,8 +206,16 @@ open_in_browser(){
 	[ -z "${selected_browser}" ] && exit 0
 
 	case "${selected_browser}" in
-		"!p")
-			open_video_with "$*"
+		"!"*)
+			if [ -f "${NBROWSER_CONFIG_DIR}/ubangs/${selected_browser/?}" ] ; then
+				source "${NBROWSER_CONFIG_DIR}/ubangs/${selected_browser/?}"
+				has nbrowser_ubang || _pemx "couldn't find nbrowser_ubang() function in ${NBROWSER_CONFIG_DIR}/ubangs/${selected_browser/?}"
+				nbrowser_ubang "$*"
+			elif [[ "${selected_browser/?}" == "p" ]] ; then
+				open_video_with "$*"
+			else
+				_pemx "ubang '${selected_browser/?}' not found!"
+			fi
 			;;
 		"Copy to clipboard"*": ")
 			_copy_to_clipboard "$*"
@@ -292,7 +300,7 @@ main(){
 				shift
 				url_handler "${ENGINES[$engine]}$*"
 			else
-				_pemx "search engine '${engine}' is not supported!"
+				_pemx "search engine '${engine}' not found!"
 			fi
 			;;
 		*)
