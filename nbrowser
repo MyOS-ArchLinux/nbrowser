@@ -7,6 +7,7 @@
 
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
+COPY_TO_CLIPBOARD_OPTION=true
 
 declare -A ENGINES
 
@@ -198,8 +199,11 @@ open_picture_with(){
 
 open_in_browser(){
 	# add clipboard
-	browser_count=$((browser_count+1))
-	installed_browsers[$browser_count]="Copy to clipboard"
+	if [ "${COPY_TO_CLIPBOARD_OPTION}" = true ]; then
+		browser_count=$((browser_count+1))
+		installed_browsers[$browser_count]="Copy to clipboard"
+		COPY_TO_CLIPBOARD_OPTION=false
+	fi
 
 	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$browser_count" )
 
