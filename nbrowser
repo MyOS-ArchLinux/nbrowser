@@ -235,25 +235,25 @@ open_in_browser(){
 url_handler(){
 	cleanurl=$(_clean_url "$*")
 	cleanurl=${cleanurl:-$1}
-	case "$cleanurl" in
-		**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
-			open_video_with "$cleanurl"
-			;;
-		*png|*jpg|*jpe|*jpeg|*gif|*.jpg\?r=*)
-			open_picture_with "$cleanurl"
-			;;
-		*)
-			local domain=$(echo "$cleanurl" | awk -F \/ '{l=split($3,a,"."); print (a[l-1]=="com"?a[l-2] OFS:X) a[l-1] OFS a[l]}' OFS=".")
-			if [ -f "${NBROWSER_CONFIG_DIR}/dbangs/${domain}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
-				has nbrowser_dbang || _pemx "couldn't find nbrowser_dbang() function in ${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
-				shift
-				nbrowser_dbang "$cleanurl"
-			else
+	local domain=$(echo "$cleanurl" | awk -F \/ '{l=split($3,a,"."); print (a[l-1]=="com"?a[l-2] OFS:X) a[l-1] OFS a[l]}' OFS=".")
+	if [ -f "${NBROWSER_CONFIG_DIR}/dbangs/${domain}" ] ; then
+		source "${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
+		has nbrowser_dbang || _pemx "couldn't find nbrowser_dbang() function in ${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
+		shift
+		nbrowser_dbang "$cleanurl"
+	else
+		case "$cleanurl" in
+			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
+				open_video_with "$cleanurl"
+				;;
+			*png|*jpg|*jpe|*jpeg|*gif|*.jpg\?r=*)
+				open_picture_with "$cleanurl"
+				;;
+			*)
 				open_in_browser "$cleanurl"
-			fi
-			;;
-	esac
+				;;
+		esac
+	fi
 }
 
 main(){
