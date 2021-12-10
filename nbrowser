@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.3
+# nbrowser v0.4
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
@@ -50,7 +50,13 @@ _choose(){
 	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
 }
 
-# Check for installed browsers
+# check if necessary programs are installed
+if ! has 'rofi'; then
+	notify-send "nbrowser: you need to install rofi!"
+	exit 1
+fi
+
+# check for installed browsers
 ## keep the first place to special action
 browser_count=1
 
@@ -84,7 +90,7 @@ for prog in badwolf qutebrowser ephemeral ; do
 	fi
 done
 
-## custom config
+# custom config
 [[ -f "${NBROWSER_CONFIG_DIR}/config" ]] &&	source "${NBROWSER_CONFIG_DIR}/config"
 
 if ! has _clean_url ;then
@@ -264,11 +270,14 @@ main(){
 		http://*|https://*)
 			url_handler "$@"
 			;;
-		browser://http://*|browser://https://*)
+		browser://*)
 			url_handler "${1:10}"
 			;;
-		freetube://http://*|freetube://https://*)
-			url_handler "${1:11}"
+		freetube://*)
+			open_video_with "${1:11}"
+			;;
+		play://*)
+			open_video_with "${1:7}"
 			;;
 
 		# my own shortcuts
@@ -322,12 +331,11 @@ main(){
 						# handle local pdf
 						[ -z "$NBROWSER_PDF_VIEWER" ] || installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
 							;;
-					*.html)
-						# handle local html
+					*)
+						# handle other local files
 						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
 				esac
 				open_in_browser "$*"
-
 			elif [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
 				source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
