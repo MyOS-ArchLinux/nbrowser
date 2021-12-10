@@ -310,13 +310,11 @@ main(){
 		"?"*)
 			local engine="${1/?}"
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
-				echo 1
+				shift
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				shift
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
 			elif [ -n "${ENGINES[$engine]}" ]; then
-				echo 2
 				shift
 				url_handler "${ENGINES[$engine]}$*"
 			elif [ -f "$NBROWSER_CONFIG_DIR/engines/engines.json" ]; then
