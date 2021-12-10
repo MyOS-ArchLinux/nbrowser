@@ -34,11 +34,7 @@ has() {
 }
 
 _pemx() {
-	if has 'rofi'; then
-		rofi -e "error: $1"
-	else
-		>&2 printf '\033[31;1merror :\033[m %s\n' "$1"
-	fi
+	rofi -e "error: $1"
 	exit 1
 }
 
@@ -299,13 +295,14 @@ main(){
 
 		# BANGS
 		"!"*)
-			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${1/?}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
-				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
+			local bang="${1/?}"
+			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
 				shift
+				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				nbrowser_bang "$*"
 			else
-				url_handler "https://duckduckgo.com/?q=$*"
+				_pemx "bang '${bang}' not found!"
 			fi
 			;;
 
@@ -313,13 +310,20 @@ main(){
 		"?"*)
 			local engine="${1/?}"
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
+				echo 1
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				shift
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
 			elif [ -n "${ENGINES[$engine]}" ]; then
+				echo 2
 				shift
 				url_handler "${ENGINES[$engine]}$*"
+			elif [ -f "$NBROWSER_CONFIG_DIR/engines/engines.json" ]; then
+				shift
+				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines/engines.json" | sed "s/{{{s}}}/$*/g")
+				[ -z "$url" ] && _pemx "engine '${engine}' not found!"
+				url_handler "$url"
 			else
 				_pemx "search engine '${engine}' not found!"
 			fi
