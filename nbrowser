@@ -87,7 +87,7 @@ for prog in badwolf qutebrowser ephemeral ; do
 done
 
 # custom config
-[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] &&	source "${NBROWSER_CONFIG_DIR}/config"
+[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] && source "${NBROWSER_CONFIG_DIR}/config"
 
 if ! has _clean_url ;then
 	_clean_url(){
@@ -158,10 +158,10 @@ open_video_with(){
 		"Download")
 			if [ -n "${NBROWSER_DOWNLOADER}" ] ; then
 				{ setsid -f ${NBROWSER_DOWNLOADER} "$*" >/dev/null 2>&1 ; }
-			elif has 'youtube-dl'; then
-				{ setsid -f "${TERMINAL:-st}" -e sh -c "youtube-dl $* || read" >/dev/null 2>&1 ; }
 			elif has 'yt-dlp'; then
 				{ setsid -f "${TERMINAL:-st}" -e sh -c "yt-dlp $* || read" >/dev/null 2>&1 ; }
+			elif has 'youtube-dl'; then
+				{ setsid -f "${TERMINAL:-st}" -e sh -c "youtube-dl $* || read" >/dev/null 2>&1 ; }
 			else
 				_pemx "youtube-dl is not installed in your system!"
 			fi
@@ -293,7 +293,7 @@ main(){
 			url_handler "https://www.twitch.tv/${1:7}"
 			;;
 
-		# BANGS
+		# bangs
 		"!"*)
 			local bang="${1/?}"
 			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
@@ -306,7 +306,7 @@ main(){
 			fi
 			;;
 
-		# Search Engines
+		# engines
 		"?"*)
 			local engine="${1/?}"
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
@@ -326,16 +326,18 @@ main(){
 				_pemx "search engine '${engine}' not found!"
 			fi
 			;;
+
 		*)
 			if [ -e "$*" ] ; then
 				case $@ in
 					*.pdf)
 						# handle local pdf
 						[ -z "$NBROWSER_PDF_VIEWER" ] || installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
-							;;
+						;;
 					*)
 						# handle other local files
 						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
+						;;
 				esac
 				open_in_browser "$*"
 			elif [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
