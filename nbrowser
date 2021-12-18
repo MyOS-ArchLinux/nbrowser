@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.3
+# nbrowser v0.4
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
@@ -34,11 +34,7 @@ has() {
 }
 
 _pemx() {
-	if has 'rofi'; then
-		rofi -e "error: $1"
-	else
-		>&2 printf '\033[31;1merror :\033[m %s\n' "$1"
-	fi
+	rofi -e "error: $1"
 	exit 1
 }
 
@@ -50,7 +46,13 @@ _choose(){
 	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
 }
 
-# Check for installed browsers
+# check if necessary programs are installed
+if ! has 'rofi'; then
+	notify-send "nbrowser: you need to install rofi!"
+	exit 1
+fi
+
+# check for installed browsers
 ## keep the first place to special action
 browser_count=1
 
@@ -84,8 +86,8 @@ for prog in badwolf qutebrowser ephemeral ; do
 	fi
 done
 
-## custom config
-[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] &&	source "${NBROWSER_CONFIG_DIR}/config"
+# custom config
+[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] && source "${NBROWSER_CONFIG_DIR}/config"
 
 if ! has _clean_url ;then
 	_clean_url(){
@@ -156,10 +158,10 @@ open_video_with(){
 		"Download")
 			if [ -n "${NBROWSER_DOWNLOADER}" ] ; then
 				{ setsid -f ${NBROWSER_DOWNLOADER} "$*" >/dev/null 2>&1 ; }
-			elif has 'youtube-dl'; then
-				{ setsid -f "${TERMINAL:-st}" -e sh -c "youtube-dl $* || read" >/dev/null 2>&1 ; }
 			elif has 'yt-dlp'; then
 				{ setsid -f "${TERMINAL:-st}" -e sh -c "yt-dlp $* || read" >/dev/null 2>&1 ; }
+			elif has 'youtube-dl'; then
+				{ setsid -f "${TERMINAL:-st}" -e sh -c "youtube-dl $* || read" >/dev/null 2>&1 ; }
 			else
 				_pemx "youtube-dl is not installed in your system!"
 			fi
@@ -264,11 +266,14 @@ main(){
 		http://*|https://*)
 			url_handler "$@"
 			;;
-		browser://http://*|browser://https://*)
+		browser://*)
 			url_handler "${1:10}"
 			;;
-		freetube://http://*|freetube://https://*)
-			url_handler "${1:11}"
+		freetube://*)
+			open_video_with "${1:11}"
+			;;
+		play://*)
+			open_video_with "${1:7}"
 			;;
 
 		# my own shortcuts
@@ -288,46 +293,53 @@ main(){
 			url_handler "https://www.twitch.tv/${1:7}"
 			;;
 
-		# BANGS
+		# bangs
 		"!"*)
-			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${1/?}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
-				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${1/?}"
+			local bang="${1/?}"
+			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
 				shift
+				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				nbrowser_bang "$*"
 			else
-				url_handler "https://duckduckgo.com/?q=$*"
+				_pemx "bang '${bang}' not found!"
 			fi
 			;;
 
-		# Search Engines
+		# engines
 		"?"*)
 			local engine="${1/?}"
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
+				shift
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				shift
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
 			elif [ -n "${ENGINES[$engine]}" ]; then
 				shift
 				url_handler "${ENGINES[$engine]}$*"
+			elif [ -f "$NBROWSER_CONFIG_DIR/engines/engines.json" ]; then
+				shift
+				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines/engines.json" | sed "s/{{{s}}}/$*/g")
+				[ -z "$url" ] && _pemx "engine '${engine}' not found!"
+				url_handler "$url"
 			else
 				_pemx "search engine '${engine}' not found!"
 			fi
 			;;
+
 		*)
 			if [ -e "$*" ] ; then
 				case $@ in
 					*.pdf)
 						# handle local pdf
 						[ -z "$NBROWSER_PDF_VIEWER" ] || installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
-							;;
-					*.html)
-						# handle local html
+						;;
+					*)
+						# handle other local files
 						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
+						;;
 				esac
 				open_in_browser "$*"
-
 			elif [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
 				source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
