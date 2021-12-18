@@ -29,6 +29,12 @@ cd nbrowser/
 sudo make install
 ```
 
+## Usage
+Set `nbrowser` as the default browser. `nbrowser` will pop up and offer multiple options to handle URLs.
+```Shell
+xdg-mime default nbrowser.desktop x-scheme-handler/https x-scheme-handler/http
+```
+
 ## External links
 - [WIKI](https://github.com/MyOS-ArchLinux/nbrowser/wiki/)
 - [Config](https://github.com/MyOS-ArchLinux/nbrowser/wiki/Config)
