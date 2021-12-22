@@ -8,8 +8,10 @@ rofi with DarkBlue theme
 ```
 - auto detect installed browsers
 - auto remove tracking elements from URLs (basic)
-- !bangs and !ubangs
 - ?search engines
+- !bangs
+- !ubangs : url bangs
+- !dbangs : direct bangs or domain bangs
 - ...
 ```
 
@@ -28,6 +30,15 @@ git clone https://github.com/MyOS-ArchLinux/nbrowser
 cd nbrowser/
 sudo make install
 ```
+## Tips
+- set a [keyboard shortcuts](https://wiki.archlinux.org/title/Keyboard_shortcuts) (ex: super+W) to open `nbrowser` easly
+- set `nbrowser` as the [default browser](https://wiki.archlinux.org/title/Default_applications) so you can open each clicked URL with nbrowser (ex: using [xdg-utils](https://wiki.archlinux.org/title/Xdg-utils)).
+
+  `xdg-mime default nbrowser.desktop x-scheme-handler/https x-scheme-handler/http x-scheme-handler/browser`
+- some console applications us the variable `$BROWSER` to open default browser,
+  so you may also need to set [environment variable](https://wiki.archlinux.org/title/Environment_variables#Default_programs) `BROWSER=nbrowser`
+- for one-click switch between browsers copy and paste this code into a bookmark URL of all your browser
+  `javascript:window.location='browser://'+location.href;`
 
 ## External links
 - [WIKI](https://github.com/MyOS-ArchLinux/nbrowser/wiki/)
