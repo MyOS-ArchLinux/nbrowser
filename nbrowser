@@ -50,7 +50,7 @@ _choose(){
 }
 
 listfiles(){
-	for file in /home/ghost/.config/nbrowser/$1/*; do
+	for file in ${NBROWSER_CONFIG_DIR}/$1/*; do
 		[ -e "$file" ] || [ -L "$file" ] || continue
 		[ -s "$file" ] && printf '%s\n' "${file##*/}"
 	done
@@ -321,7 +321,6 @@ main(){
 				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				nbrowser_bang "$*"
-				#_pemx "bang '${bang}' not found!"
 			fi
 			;;
 
