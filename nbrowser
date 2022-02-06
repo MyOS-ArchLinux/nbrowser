@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.4
+# nbrowser v0.4 next
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
@@ -13,9 +13,11 @@ declare -A ENGINES
 
 ENGINES=(
 	["google"]="https://www.google.com/search?q="
+	["g"]="https://www.google.com/search?q="
 	["duckduckgo"]="https://duckduckgo.com/?q="
 	["ddg"]="https://duckduckgo.com/?q="
 	["startpage"]="https://www.startpage.com/do/search?query="
+	["sp"]="https://www.startpage.com/do/search?query="
 	["archwiki"]="https://wiki.archlinux.org/index.php?title=Special:Search&search="
 	["aur"]="https://aur.archlinux.org/packages/?O=0&SeB=nd&outdated=&SB=n&SO=a&PP=50&do_Search=Go&K="
 	["github"]="https://github.com/search?q="
@@ -25,6 +27,7 @@ ENGINES=(
 	["tvdb"]="https://www.thetvdb.com/search?query="
 	["mal"]="https://myanimelist.net/search/all?q="
 	["youtube"]="https://www.youtube.com/results?search_query="
+	["ytb"]="https://www.youtube.com/results?search_query="
 )
 
 has() {
@@ -46,9 +49,16 @@ _choose(){
 	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
 }
 
+listfiles(){
+	for file in /home/ghost/.config/nbrowser/$1/*; do
+		[ -e "$file" ] || [ -L "$file" ] || continue
+		[ -s "$file" ] && printf '%s\n' "${file##*/}"
+	done
+}
+
 # check if necessary programs are installed
 if ! has 'rofi'; then
-	notify-send "nbrowser: you need to install rofi!"
+	notify-send "nbrowser: rofi is not installed in your system!"
 	exit 1
 fi
 
@@ -87,7 +97,7 @@ for prog in badwolf qutebrowser ephemeral ; do
 done
 
 # custom config
-[[ -f "${NBROWSER_CONFIG_DIR}/config" ]] && source "${NBROWSER_CONFIG_DIR}/config"
+[ -f "${NBROWSER_CONFIG_DIR}/config" ] && source "${NBROWSER_CONFIG_DIR}/config"
 
 if ! has _clean_url ;then
 	_clean_url(){
@@ -220,7 +230,11 @@ open_in_browser(){
 			elif [[ "${selected_browser/?}" == "p" ]] ; then
 				open_video_with "$*"
 			else
-				_pemx "ubang '${selected_browser/?}' not found!"
+				ubang=$(listfiles ubangs | rofi -dmenu -p 'ubangs' -i -mesg "ubangs '${selected_browser/?}' not found!")
+				[ -z "${ubang}" ] && exit
+				source "${NBROWSER_CONFIG_DIR}/ubangs/${ubang}"
+				has nbrowser_ubang || _pemx "couldn't find nbrowser_ubang() function in ${NBROWSER_CONFIG_DIR}/ubangs/${ubang}"
+				nbrowser_ubang "$*"
 			fi
 			;;
 		"Copy to clipboard"*": ")
@@ -296,39 +310,50 @@ main(){
 		# bangs
 		"!"*)
 			local bang="${1/?}"
+			shift
 			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
-				shift
 				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
 				nbrowser_bang "$*"
 			else
-				_pemx "bang '${bang}' not found!"
+				bang=$(listfiles bangs | rofi -dmenu -p 'bangs' -i -mesg "bang '${bang}' not found!")
+				[ -z "${bang}" ] && exit
+				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+				nbrowser_bang "$*"
+				#_pemx "bang '${bang}' not found!"
 			fi
 			;;
 
 		# engines
 		"?"*)
 			local engine="${1/?}"
+			shift
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
-				shift
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
 			elif [ -n "${ENGINES[$engine]}" ]; then
-				shift
 				url_handler "${ENGINES[$engine]}$*"
-			elif [ -f "$NBROWSER_CONFIG_DIR/engines/engines.json" ]; then
-				shift
-				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines/engines.json" | sed "s/{{{s}}}/$*/g")
-				[ -z "$url" ] && _pemx "engine '${engine}' not found!"
-				url_handler "$url"
+			elif [ -f "$NBROWSER_CONFIG_DIR/engines.json" ]; then
+				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json" | sed "s/{{{s}}}/$*/g")
+				if [ ! -z "$url" ] ; then
+					url_handler "$url"
+				else
+					_pemx "engine '${engine}' not found!"
+				fi
 			else
-				_pemx "search engine '${engine}' not found!"
+				engine=$(listfiles engines | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
+				[ -z "$engine" ] && exit
+				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
+				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
+				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+				#_pemx "search engine '${engine}' not found!"
 			fi
 			;;
 
 		*)
-			if [ -e "$*" ] ; then
+			if [ -f "$*" ] ; then
 				case $@ in
 					*.pdf)
 						# handle local pdf
