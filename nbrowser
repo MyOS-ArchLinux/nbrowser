@@ -339,15 +339,19 @@ main(){
 				if [ ! -z "$url" ] ; then
 					url_handler "$url"
 				else
-					_pemx "engine '${engine}' not found!"
+					ENGINESLIST="$(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
+					ENGINESLIST+=" $(listfiles engines)"
+					engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
+					[ -z "$engine" ] && exit
+					[ -n "$1" ] && main "?"$engine $*
 				fi
 			else
-				engine=$(listfiles engines | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
+				ENGINESLIST="$(listfiles engines)"
+				engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 				[ -z "$engine" ] && exit
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
-				#_pemx "search engine '${engine}' not found!"
 			fi
 			;;
 
