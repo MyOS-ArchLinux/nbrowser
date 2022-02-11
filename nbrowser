@@ -261,7 +261,6 @@ url_handler(){
 	if [ -f "${NBROWSER_CONFIG_DIR}/dbangs/${domain}" ] ; then
 		source "${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
 		has nbrowser_dbang || _pemx "couldn't find nbrowser_dbang() function in ${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
-		shift
 		nbrowser_dbang "$cleanurl"
 	else
 		case "$cleanurl" in
@@ -317,17 +316,13 @@ main(){
 		"!"*)
 			local bang="${1/?}"
 			shift
-			if [ -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-				nbrowser_bang "$*"
-			else
+			if [ ! -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
 				bang=$(listfiles bangs | rofi -dmenu -p 'bangs' -i -mesg "bang '${bang}' not found!")
-				[ -z "${bang}" ] && exit
-				source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-				has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-				nbrowser_bang "$*"
 			fi
+			[ -z "${bang}" ] && exit
+			source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+			has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+			nbrowser_bang "$*"
 			;;
 
 		# engines
@@ -338,26 +333,26 @@ main(){
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
-			elif [ -n "${ENGINES[$engine]}" ]; then
+			elif [ -n "${ENGINES[${engine:- }]}" ]; then
 				url_handler "${ENGINES[$engine]}$*"
 			elif [ -f "$NBROWSER_CONFIG_DIR/engines.json" ]; then
 				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json" | sed "s/{{{s}}}/$*/g")
 				if [ ! -z "$url" ] ; then
 					url_handler "$url"
 				else
-					ENGINESLIST="$(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
-					ENGINESLIST+=" $(listfiles engines)"
+					ENGINESLIST="$(listfiles engines)"
+					ENGINESLIST+=" ${!ENGINES[@]}"
+					ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
 					engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 					[ -z "$engine" ] && exit
 					[ -n "$1" ] && main "?"$engine $*
 				fi
 			else
 				ENGINESLIST="$(listfiles engines)"
+				ENGINESLIST+=" ${!ENGINES[@]}"
 				engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 				[ -z "$engine" ] && exit
-				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+				[ -n "$1" ] && main "?"$engine $*
 			fi
 			;;
 
