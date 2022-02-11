@@ -134,6 +134,12 @@ if ! has _copy_to_clipboard ;then
 	}
 fi
 
+if ! has _gemini_handler ;then
+	_gemini_handler(){
+		open_in_browser "https://proxy.vulpes.one/gemini/${1:9}"
+	}
+fi
+
 open_a_browser(){
 	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
 
@@ -275,7 +281,7 @@ url_handler(){
 main(){
 	case "$1" in
 		gemini://*)
-			open_in_browser "https://proxy.vulpes.one/gemini/${1:9}"
+			_gemini_handler "$@"
 			;;
 		http://*|https://*)
 			url_handler "$@"
