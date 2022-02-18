@@ -49,6 +49,10 @@ _choose(){
 	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
 }
 
+_input(){
+	rofi -l 0 -width 50 -p "${@:-input}" -dmenu
+}
+
 listfiles(){
 	for file in ${NBROWSER_CONFIG_DIR}/$1/*; do
 		[ -e "$file" ] || [ -L "$file" ] || continue
