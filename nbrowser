@@ -333,30 +333,34 @@ main(){
 		"?"*)
 			local engine="${1/?}"
 			shift
+			local searchquery="$*"
 			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
 				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
 				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+				[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
+				[ -n "$searchquery" ] && url_handler "$(nbrowser_search $searchquery)"
 			elif [ -n "${ENGINES[${engine:- }]}" ]; then
-				url_handler "${ENGINES[$engine]}$*"
+				[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
+				[ -n "$searchquery" ] && url_handler "${ENGINES[$engine]}$searchquery"
 			elif [ -f "$NBROWSER_CONFIG_DIR/engines.json" ]; then
-				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json" | sed "s/{{{s}}}/$*/g")
+				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json")
 				if [ ! -z "$url" ] ; then
-					url_handler "$url"
+					[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
+					[ -n "$searchquery" ] && url_handler "$(echo $url | sed "s/{{{s}}}/$searchquery/g")"
 				else
 					ENGINESLIST="$(listfiles engines)"
 					ENGINESLIST+=" ${!ENGINES[@]}"
 					ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
 					engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 					[ -z "$engine" ] && exit
-					[ -n "$1" ] && main "?"$engine $*
+					main "?"$engine $searchquery
 				fi
 			else
 				ENGINESLIST="$(listfiles engines)"
 				ENGINESLIST+=" ${!ENGINES[@]}"
 				engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 				[ -z "$engine" ] && exit
-				[ -n "$1" ] && main "?"$engine $*
+				main "?"$engine $searchquery
 			fi
 			;;
 
