@@ -295,6 +295,9 @@ main(){
 		freetube://*)
 			open_video_with "${1:11}"
 			;;
+		mpv://*|vlc://*)
+			open_video_with "${1:6}"
+			;;
 		play://*)
 			open_video_with "${1:7}"
 			;;
