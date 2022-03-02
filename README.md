@@ -1,6 +1,6 @@
 # nbrowser
 
-`nbrowser` started as browser prompter for Linux. It works by setting itself as the default browser; any clicked links in non-browser apps are now sent to `nbrowser` where you are presented with a menu of all your installed browsers. You may now decide which app you’d like to continue opening the link with and more.
+`nbrowser` started as browser prompter for Linux. It works by setting it as the default browser; any clicked links in non-browser apps are now sent to `nbrowser` where you are presented with a menu of all your installed browsers. You may now decide which app you’d like to continue opening the link with and more.
 
 <p align="center">
 <img alt="screenshot" src="https://user-images.githubusercontent.com/73726132/136132026-aa2a685e-965c-44b5-b9c3-5a043dc2539a.gif">
