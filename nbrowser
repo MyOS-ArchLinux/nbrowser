@@ -50,7 +50,8 @@ _choose(){
 }
 
 _input(){
-	[ -z ${2} ] || local ROFI_ADD_ARGS="-mesg ${2:-}"
+	[ -z ${2} ] || local ROFI_ADD_ARGS="-mesg \"${2//&/&amp;}\""
+	# -mesg ""
 	rofi -l 0 -width 50 -p "${1:-input}" -dmenu ${ROFI_ADD_ARGS:-}
 }
 
@@ -292,6 +293,7 @@ main(){
 		open_in_browser "$*"
 		return
 	fi
+
 	# check for protocols
 	if [[ "${arg}" =~ ^([a-zA-Z-]+):// ]]; then
 		local protocol="${BASH_REMATCH[1]}"
@@ -314,7 +316,7 @@ main(){
 	fi
 
 	# check for bangs
-	if [[ "${arg}" =~ ^\!([a-zA-Z-]+)\  ]]; then
+	if [[ "${arg}" =~ ^\!([a-zA-Z0-9-]+) ]]; then
 		local bang="${BASH_REMATCH[1]}"
 		shift
 		if [ ! -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
@@ -328,7 +330,7 @@ main(){
 	fi
 
 	# check for engines
-	if [[ "${arg}" =~ ^\?([a-zA-Z-]+) ]]; then
+	if [[ "${arg}" =~ ^\?([a-zA-Z0-9-]+) ]]; then
 		local engine="${BASH_REMATCH[1]}"
 		local engineURL=""
 		shift
@@ -367,7 +369,7 @@ main(){
 			[ -f "${NBROWSER_CONFIG_DIR}/engines.json" ] && ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
 			engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 			[ -z "${engine}" ] && return
-			main "?${engine} ${searchQuery}"
+			main "?${engine}" ${searchQuery}
 		fi
 		return
 	fi
