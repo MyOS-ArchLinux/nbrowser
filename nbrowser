@@ -50,12 +50,12 @@ _choose(){
 }
 
 _input(){
-	[ -z ${2} ] || local ROFI_ADD_ARGS="-mesg \"${2//&/&amp;}\""
+	[ -z "${2}" ] || local ROFI_ADD_ARGS="-mesg \"${2//&/&amp;}\""
 	rofi -l 0 -width 50 -p "${1:-input}" -dmenu ${ROFI_ADD_ARGS:-}
 }
 
 listfiles(){
-	for file in ${NBROWSER_CONFIG_DIR}/$1/*; do
+	for file in "${NBROWSER_CONFIG_DIR}/$1"/*; do
 		[ -e "$file" ] || [ -L "$file" ] || continue
 		[ -s "$file" ] && printf '%s\n' "${file##*/}"
 	done
@@ -247,8 +247,7 @@ open_in_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			echo "opening : $selected_browser"
-			{ setsid -f $selected_browser "$*" >/dev/null 2>&1 ; }
+			{ setsid -f ${selected_browser} "$*" >/dev/null 2>&1 ; }
 			;;
 	esac
 }
@@ -277,6 +276,8 @@ url_handler(){
 }
 
 main(){
+	[ -z "$1" ] && return
+
 	local arg="$*"
 
 	# check for file or dir
@@ -297,7 +298,7 @@ main(){
 	if [[ "${arg}" =~ ^([a-zA-Z-]+):// ]]; then
 		local protocol="${BASH_REMATCH[1]}"
 		if has "${protocol}_protocolhandler" ; then
-			"${protocol}_protocolhandler" ${arg/"$protocol://"}
+			"${protocol}_protocolhandler" "${arg/"$protocol://"}"
 		else
 			case ${protocol} in
 				mpv|vlc|freetube|play)
@@ -347,7 +348,8 @@ main(){
 		# if engine in engines.json
 		elif [ -f "${NBROWSER_CONFIG_DIR}/engines.json" ]; then
 			local engineURL=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json")
-			if [ ! -z "${engineURL}" ] ; then
+			local engineName=$(jq -r ".[]|select( .t == \"$engine\" )|.s" "$NBROWSER_CONFIG_DIR/engines.json")
+			if [ -n "${engineURL}" ] ; then
 				nbrowser_search(){
 					echo "${2:?}" | sed "s/{{{s}}}/${1:?}/g"
 				}
@@ -355,12 +357,12 @@ main(){
 		fi
 
 		if has nbrowser_search; then
-			[ -z "${searchQuery}" ] && searchQuery=$(_input "$engine Search" "${engineURL:-}")
+			[ -z "${searchQuery}" ] && searchQuery=$(_input "${engineName:-$engine} Search" "${engineURL:-}")
 			[ -n "${searchQuery}" ] || return
-			if [ -z ${engineURL} ] ; then
+			if [ -z "${engineURL}" ] ; then
 				url_handler "$(nbrowser_search "${searchQuery}")"
 			else
-				url_handler "$(nbrowser_search "${searchQuery}" ${engineURL})"
+				url_handler "$(nbrowser_search "${searchQuery}" "${engineURL}")"
 			fi			 
 		else
 			local ENGINESLIST="$(listfiles engines)"
@@ -368,7 +370,7 @@ main(){
 			[ -f "${NBROWSER_CONFIG_DIR}/engines.json" ] && ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
 			engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
 			[ -z "${engine}" ] && return
-			main "?${engine}" ${searchQuery}
+			main "?${engine}" "${searchQuery}"
 		fi
 		return
 	fi
@@ -377,7 +379,7 @@ main(){
 	if [[ "${arg}" =~ ^([A-Za-z0-9-]+)/. ]]; then
 		local shortcut="${BASH_REMATCH[1]}"
 		if has "${shortcut}_shortcut" ; then
-			"${shortcut}_shortcut" ${arg/"$shortcut/"}
+			"${shortcut}_shortcut" "${arg/"$shortcut/"}"
 			return
 		fi
 	fi
@@ -389,7 +391,7 @@ main(){
 		if [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
 			source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
 			has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
-			[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
+			url_handler "$(nbrowser_search $*)"
 		elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
 			url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
 		else
