@@ -51,7 +51,6 @@ _choose(){
 
 _input(){
 	[ -z ${2} ] || local ROFI_ADD_ARGS="-mesg \"${2//&/&amp;}\""
-	# -mesg ""
 	rofi -l 0 -width 50 -p "${1:-input}" -dmenu ${ROFI_ADD_ARGS:-}
 }
 
@@ -316,7 +315,7 @@ main(){
 	fi
 
 	# check for bangs
-	if [[ "${arg}" =~ ^\!([a-zA-Z0-9-]+) ]]; then
+	if [[ "${arg}" =~ ^\!([a-zA-Z0-9-]*) ]]; then
 		local bang="${BASH_REMATCH[1]}"
 		shift
 		if [ ! -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
@@ -330,7 +329,7 @@ main(){
 	fi
 
 	# check for engines
-	if [[ "${arg}" =~ ^\?([a-zA-Z0-9-]+) ]]; then
+	if [[ "${arg}" =~ ^\?([a-zA-Z0-9-]*) ]]; then
 		local engine="${BASH_REMATCH[1]}"
 		local engineURL=""
 		shift
@@ -375,7 +374,7 @@ main(){
 	fi
 
 	# check for shortcuts
-	if [[ "${arg}" =~ ^([a-zA-Z-]+)/. ]]; then
+	if [[ "${arg}" =~ ^([A-Za-z0-9-]+)/. ]]; then
 		local shortcut="${BASH_REMATCH[1]}"
 		if has "${shortcut}_shortcut" ; then
 			"${shortcut}_shortcut" ${arg/"$shortcut/"}
