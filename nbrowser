@@ -268,7 +268,7 @@ url_handler(){
 		nbrowser_dbang "$cleanurl"
 	else
 		case "$cleanurl" in
-			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
+			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8|*.mov)
 				open_video_with "$cleanurl"
 				;;
 			*png|*jpg|*jpe|*jpeg|*gif|*.jpg\?r=*)
