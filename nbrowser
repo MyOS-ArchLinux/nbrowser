@@ -223,7 +223,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$browser_count" )
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -281,7 +281,7 @@ main(){
 
 	local arg="$*"
 
-	# check for file or dir
+	# check if arg is a file or a dir
 	if [[ -e "${arg}" ]]; then
 		case "${arg}" in
 			*.pdf)
@@ -310,6 +310,9 @@ main(){
 					;;
 				browser)
 					url_handler ${arg/"$protocol://"}
+					;;
+				nbrowser)
+					nbrowser ${arg/"$protocol://"}
 					;;
 				*)
 					url_handler "${arg}"
@@ -391,16 +394,18 @@ main(){
 	# check for domain
 	if [[ "${arg}" =~ ^([A-Za-z0-9.-]{1,63}\.)+[A-Za-z0-9-]{1,}$ ]]; then
 		url_handler "http://${arg}"
+		return
+	fi
+
+	# use dafault search engine
+	if [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
+		source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+		has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+		url_handler "$(nbrowser_search $*)"
+	elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
+		url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
 	else
-		if [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
-			source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
-			has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
-			url_handler "$(nbrowser_search $*)"
-		elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
-			url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
-		else
-			url_handler "https://duckduckgo.com/?q=$*"
-		fi
+		url_handler "https://duckduckgo.com/?q=$*"
 	fi
 }
 
