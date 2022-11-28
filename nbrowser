@@ -9,6 +9,7 @@
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
 COPY_TO_CLIPBOARD_OPTION=true
+NBROWSER_SIMPLE_URL_HANDLER=false
 
 declare -A ENGINES
 
@@ -261,6 +262,8 @@ url_handler(){
 		source "${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
 		has nbrowser_dbang || _pemx "couldn't find nbrowser_dbang() function in ${NBROWSER_CONFIG_DIR}/dbangs/${domain}"
 		nbrowser_dbang "$cleanurl"
+	elif [ "${NBROWSER_SIMPLE_URL_HANDLER}" = true ]; then
+		open_in_browser "$cleanurl"
 	else
 		case "$cleanurl" in
 			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
