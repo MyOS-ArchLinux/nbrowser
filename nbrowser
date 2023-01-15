@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# nbrowser v0.6
+# nbrowser v0.7
+# Requires bash 4+
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
@@ -7,8 +8,8 @@
 
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
-COPY_TO_CLIPBOARD_OPTION=true
-NBROWSER_SIMPLE_URL_HANDLER=false
+COPY_TO_CLIPBOARD_OPTION=${COPY_TO_CLIPBOARD_OPTION:-true}
+NBROWSER_SIMPLE_URL_HANDLER=${NBROWSER_SIMPLE_URL_HANDLER:-false}
 
 declare -A ENGINES
 
@@ -51,11 +52,12 @@ _choose(){
 }
 
 _input(){
-	rofi -l 0 -width 50 -p "${@:-input}" -dmenu
+	[ -z "${2}" ] || local ROFI_ADD_ARGS="-mesg \"${2//&/&amp;}\""
+	rofi -l 0 -width 50 -p "${1:-input}" -dmenu ${ROFI_ADD_ARGS:-}
 }
 
 listfiles(){
-	for file in ${NBROWSER_CONFIG_DIR}/$1/*; do
+	for file in "${NBROWSER_CONFIG_DIR}/$1"/*; do
 		[ -e "$file" ] || [ -L "$file" ] || continue
 		[ -s "$file" ] && printf '%s\n' "${file##*/}"
 	done
@@ -136,12 +138,6 @@ fi
 if ! has _copy_to_clipboard ;then
 	_copy_to_clipboard(){
 		printf '%s\n' "$@" | xclip -selection clipboard ;
-	}
-fi
-
-if ! has _gemini_handler ;then
-	_gemini_handler(){
-		open_in_browser "https://proxy.vulpes.one/gemini/${1:9}"
 	}
 fi
 
@@ -228,7 +224,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$browser_count" )
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -253,8 +249,7 @@ open_in_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			echo "opening : $selected_browser"
-			{ setsid -f $selected_browser "$*" >/dev/null 2>&1 ; }
+			{ setsid -f ${selected_browser} "$*" >/dev/null 2>&1 ; }
 			;;
 	esac
 }
@@ -285,115 +280,136 @@ url_handler(){
 }
 
 main(){
-	case "$1" in
-		gemini://*)
-			_gemini_handler "$@"
-			;;
-		http://*|https://*)
-			url_handler "$@"
-			;;
-		browser://*)
-			url_handler "${1:10}"
-			;;
-		freetube://*)
-			open_video_with "${1:11}"
-			;;
-		mpv://*|vlc://*)
-			open_video_with "${1:6}"
-			;;
-		play://*)
-			open_video_with "${1:7}"
-			;;
+	[ -z "$1" ] && return
 
-		# my own shortcuts
-		"git/"*)
-			url_handler "https://github.com/${1:4}"
-			;;
-		"mal/"*)
-			url_handler "https://myanimelist.net/anime/${1:4}"
-			;;
-		"aur/"*)
-			url_handler "https://aur.archlinux.org/packages/${1:4}"
-			;;
-		"pypi/"*)
-			url_handler "https://pypi.org/project/${1:5}"
-			;;
-		"twitch/"*)
-			url_handler "https://www.twitch.tv/${1:7}"
-			;;
+	local arg="$*"
 
-		# bangs
-		"!"*)
-			local bang="${1/?}"
-			shift
-			if [ ! -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
-				bang=$(listfiles bangs | rofi -dmenu -p 'bangs' -i -mesg "bang '${bang}' not found!")
+	# check if arg is a file or a dir
+	if [[ -e "${arg}" ]]; then
+		case "${arg}" in
+			*.pdf)
+				[ -z "${NBROWSER_PDF_VIEWER}" ]	|| installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
+				;;
+			*)
+				[ -z "${NBROWSER_HTML_EDITOR}" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
+				;;
+		esac
+		open_in_browser "$*"
+		return
+	fi
+
+	# check for protocols
+	if [[ "${arg}" =~ ^([a-zA-Z0-9]+):(//|\?|\+) ]]; then
+		local protocol="${BASH_REMATCH[1]}"
+		local protocol_small=${protocol,,}
+		if has "${protocol}_protocolhandler" ; then
+			"${protocol}_protocolhandler" "${arg/"$protocol://"}"
+		elif has "${protocol,,}_protocolhandler" ; then
+			"${protocol_small}_protocolhandler" "${arg/"$protocol://"}"
+		else
+			case "${protocol_small:-$protocol}" in
+				mpv|vlc|freetube|play)
+					open_video_with ${arg/"$protocol://"}
+					;;
+				browser)
+					url_handler ${arg/"$protocol://"}
+					;;
+				nbrowser)
+					nbrowser ${arg/"$protocol://"}
+					;;
+				*)
+					url_handler "${arg}"
+					;;
+			esac
+		fi
+		return
+	fi
+
+	# check for bangs
+	if [[ "${arg}" =~ ^\!([a-zA-Z0-9=?-]*) ]]; then
+		local bang="${BASH_REMATCH[1]}"
+		shift
+		if [ ! -f "${NBROWSER_CONFIG_DIR}/bangs/${bang}" ] ; then
+			bang=$(listfiles bangs | rofi -dmenu -p 'bangs' -i -mesg "bang '${bang:-$arg}' not found!")
+		fi
+		[ -z "${bang}" ] && exit
+		source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+		has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
+		nbrowser_bang "$*"
+		return
+	fi
+
+	# check for engines
+	if [[ "${arg}" =~ ^\?([a-zA-Z0-9-]*) ]]; then
+		local engine="${BASH_REMATCH[1]}"
+		local engineURL=""
+		shift
+		local searchQuery="$*"
+		# if engine in local file
+		if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
+			source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
+			has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
+		# if engine in config file
+		elif [ -n "${ENGINES[${engine:- }]}" ]; then
+			engineURL=${ENGINES[$engine]}
+			nbrowser_search(){
+				echo "${2:?}${1:?}"
+			}
+		# if engine in engines.json
+		elif [ -f "${NBROWSER_CONFIG_DIR}/engines.json" ]; then
+			local engineURL=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json")
+			local engineName=$(jq -r ".[]|select( .t == \"$engine\" )|.s" "$NBROWSER_CONFIG_DIR/engines.json")
+			if [ -n "${engineURL}" ] ; then
+				nbrowser_search(){
+					echo "${2:?}" | sed "s/{{{s}}}/${1:?}/g"
+				}
 			fi
-			[ -z "${bang}" ] && exit
-			source "${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-			has nbrowser_bang || _pemx "couldn't find nbrowser_bang() function in ${NBROWSER_CONFIG_DIR}/bangs/${bang}"
-			nbrowser_bang "$*"
-			;;
+		fi
 
-		# engines
-		"?"*)
-			local engine="${1/?}"
-			shift
-			local searchquery="$*"
-			if [ -f "${NBROWSER_CONFIG_DIR}/engines/${engine}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${engine}"
-				[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
-				[ -n "$searchquery" ] && url_handler "$(nbrowser_search $searchquery)"
-			elif [ -n "${ENGINES[${engine:- }]}" ]; then
-				[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
-				[ -n "$searchquery" ] && url_handler "${ENGINES[$engine]}$searchquery"
-			elif [ -f "$NBROWSER_CONFIG_DIR/engines.json" ]; then
-				local url=$(jq -r ".[]|select( .t == \"$engine\" )|.u" "$NBROWSER_CONFIG_DIR/engines.json")
-				if [ ! -z "$url" ] ; then
-					[ -z "$searchquery" ] && searchquery=$(_input "$engine Search")
-					[ -n "$searchquery" ] && url_handler "$(echo $url | sed "s/{{{s}}}/$searchquery/g")"
-				else
-					ENGINESLIST="$(listfiles engines)"
-					ENGINESLIST+=" ${!ENGINES[@]}"
-					ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
-					engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
-					[ -z "$engine" ] && exit
-					main "?"$engine $searchquery
-				fi
+		if has nbrowser_search; then
+			[ -z "${searchQuery}" ] && searchQuery=$(_input "${engineName:-$engine} Search" "${engineURL:-}")
+			[ -n "${searchQuery}" ] || return
+			if [ -z "${engineURL}" ] ; then
+				url_handler "$(nbrowser_search "${searchQuery}")"
 			else
-				ENGINESLIST="$(listfiles engines)"
-				ENGINESLIST+=" ${!ENGINES[@]}"
-				engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
-				[ -z "$engine" ] && exit
-				main "?"$engine $searchquery
+				url_handler "$(nbrowser_search "${searchQuery}" "${engineURL}")"
 			fi
-			;;
+		else
+			local ENGINESLIST="$(listfiles engines)"
+			ENGINESLIST+=" ${!ENGINES[@]}"
+			[ -f "${NBROWSER_CONFIG_DIR}/engines.json" ] && ENGINESLIST+=" $(jq -r ".[]|.t" "$NBROWSER_CONFIG_DIR/engines.json")"
+			engine=$(printf "%s\n" ${ENGINESLIST} | awk '!a[$0]++' | rofi -dmenu -p 'engines' -i -mesg "engine '${engine}' not found!")
+			[ -z "${engine}" ] && return
+			main "?${engine}" "${searchQuery}"
+		fi
+		return
+	fi
 
-		*)
-			if [ -f "$*" ] ; then
-				case $@ in
-					*.pdf)
-						# handle local pdf
-						[ -z "$NBROWSER_PDF_VIEWER" ] || installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
-						;;
-					*)
-						# handle other local files
-						[ -z "$NBROWSER_HTML_EDITOR" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
-						;;
-				esac
-				open_in_browser "$*"
-			elif [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
-				source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
-				has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
-				[ -n "$1" ] && url_handler "$(nbrowser_search $*)"
-			elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
-				url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
-			else
-				url_handler "https://duckduckgo.com/?q=$*"
-			fi
-			;;
-	esac
+	# check for shortcuts
+	if [[ "${arg}" =~ ^([A-Za-z0-9-]+)/. ]]; then
+		local shortcut="${BASH_REMATCH[1]}"
+		if has "${shortcut}_shortcut" ; then
+			"${shortcut}_shortcut" "${arg/"$shortcut/"}"
+			return
+		fi
+	fi
+
+	# check for domain
+	if [[ "${arg}" =~ ^([A-Za-z0-9.-]{1,63}\.)+[A-Za-z0-9-]{1,}$ ]]; then
+		url_handler "http://${arg}"
+		return
+	fi
+
+	# use dafault search engine
+	if [ -f "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}" ] ; then
+		source "${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+		has nbrowser_search || _pemx "couldn't find nbrowser_search() function in ${NBROWSER_CONFIG_DIR}/engines/${NBROWSER_DEFAULT_SEARCH}"
+		url_handler "$(nbrowser_search $*)"
+	elif [ -n "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}" ]; then
+		url_handler "${ENGINES[$NBROWSER_DEFAULT_SEARCH]}$*"
+	else
+		url_handler "https://duckduckgo.com/?q=$*"
+	fi
 }
 
 if [ -z "$1" ]; then
