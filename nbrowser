@@ -5,7 +5,22 @@
 # source : https://github.com/MyOS-ArchLinux/nbrowser
 # license: GPLv3 <https://gnu.org/licenses/gpl-3.0.html>
 # shellcheck disable=SC2190,SC2086,SC1091
-
+#
+# FEATURES #
+# - auto detect installed browsers
+# - auto remove tracking elements from URLs (basic)
+# - ?search engines
+# - !bangs
+# - !ubangs : url bangs
+# - !dbangs : direct bangs or domain bangs
+#
+# TIPS #
+# - set a keyboard shortcuts (ex: super+W) to open nbrowser easly
+# - set nbrowser as the default browser so you can open each clicked URL with nbrowser (ex: using xdg-utils).
+# - xdg-mime default nbrowser.desktop x-scheme-handler/https x-scheme-handler/http x-scheme-handler/browser
+# - some console applications us the variable $BROWSER to open default browser, so you may also need to set environment variable BROWSER=nbrowser
+# - for one-click switch between browsers copy and paste this code into a bookmark URL of all your browser javascript:window.location='browser://'+location.href;
+#
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
 COPY_TO_CLIPBOARD_OPTION=${COPY_TO_CLIPBOARD_OPTION:-true}
@@ -74,7 +89,7 @@ fi
 browser_count=1
 
 ## firefox based browser
-for prog in librewolf firefox icecat palemoon; do
+for prog in librewolf firefox icecat palemoon firedragon torbrowser; do
 	if has "$prog" ; then
 		browser_count=$((browser_count+1))
 		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
