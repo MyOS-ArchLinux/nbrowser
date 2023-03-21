@@ -85,7 +85,7 @@ for prog in librewolf firefox icecat palemoon; do
 done
 
 ## chromium based browser
-for prog in chromium brave vivaldi-stable opera; do
+for prog in google-chrome-stable chromium brave vivaldi-stable opera; do
 	if has "$prog" ; then
 		browser_count=$((browser_count+1))
 		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
@@ -152,7 +152,7 @@ open_a_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			{ setsid -f ${selected_browser} >/dev/null 2>&1 ; }
+			{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
 			;;
 	esac
 }
@@ -249,7 +249,7 @@ open_in_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			{ setsid -f ${selected_browser} "$*" >/dev/null 2>&1 ; }
+			{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
 			;;
 	esac
 }
