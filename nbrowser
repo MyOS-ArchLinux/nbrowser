@@ -152,7 +152,7 @@ open_a_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
+			{ setsid -f $(bash -c "exec ${selected_browser}") >/dev/null 2>&1 ; }
 			;;
 	esac
 }
