@@ -7,6 +7,7 @@
 # shellcheck disable=SC2190,SC2086,SC1091
 
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
+NBROWSER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
 COPY_TO_CLIPBOARD_OPTION=${COPY_TO_CLIPBOARD_OPTION:-true}
 NBROWSER_SIMPLE_URL_HANDLER=${NBROWSER_SIMPLE_URL_HANDLER:-false}
@@ -48,7 +49,8 @@ _notify(){
 }
 
 _choose(){
-	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
+	[ -z "${2}" ] || local ROFI_ADD_ARGS=${2:-}
+	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit ${ROFI_ADD_ARGS:-} -filter "${1:-}"
 }
 
 _input(){
@@ -142,7 +144,7 @@ if ! has _copy_to_clipboard ;then
 fi
 
 open_a_browser(){
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -217,6 +219,12 @@ open_picture_with(){
 }
 
 open_in_browser(){
+	case "$1" in
+		"-m")
+			MULTI_URL=true;shift
+			;;
+	esac
+
 	# add clipboard
 	if [ "${COPY_TO_CLIPBOARD_OPTION}" = true ]; then
 		browser_count=$((browser_count+1))
@@ -224,7 +232,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -249,7 +257,11 @@ open_in_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
+			if [ "${MULTI_URL}" = true ]; then
+				{ setsid -f $(bash -c "exec ${selected_browser} $*") >/dev/null 2>&1 ; }
+			else
+				{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
+			fi
 			;;
 	esac
 }
@@ -315,6 +327,7 @@ main(){
 					url_handler ${arg/"$protocol://"}
 					;;
 				nbrowser)
+					arg=$(echo "$*" | sed "s/.*\///;s/%20/ /g")
 					nbrowser ${arg/"$protocol://"}
 					;;
 				*)
