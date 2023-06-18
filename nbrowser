@@ -33,6 +33,9 @@ ENGINES=(
 	["ytb"]="https://www.youtube.com/results?search_query="
 )
 
+FIREFOX_BASED_BROWSERS=(librewolf firefox floorp icecat palemoon firedragon)
+CHROMIUM_BASED_BROWSERS=(google-chrome-stable chromium brave vivaldi-stable opera)
+
 has() {
 	case "$(command -v "$1" 2>/dev/null)" in
 		alias*|"") return 1
@@ -83,7 +86,7 @@ add_browser(){
 }
 
 ## firefox based browser
-for prog in librewolf firefox floorp icecat palemoon; do
+for prog in ${FIREFOX_BASED_BROWSERS[*]}; do
 	if has "$prog" ; then
 		add_browser "$prog" "$(command -v $prog)"
 		add_browser "$prog [Private]" "$(command -v $prog) --private-window"
@@ -91,7 +94,7 @@ for prog in librewolf firefox floorp icecat palemoon; do
 done
 
 ## chromium based browser
-for prog in google-chrome-stable chromium brave vivaldi-stable opera; do
+for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
 	if has "$prog" ; then
 		add_browser "$prog" "$(command -v $prog)"
 		# add private window
