@@ -225,7 +225,7 @@ open_picture_with(){
 open_in_browser(){
 	case "$1" in
 		"-m")
-			MULTI_URL=true;shift
+			local MULTI_URL=true;shift
 			;;
 	esac
 
@@ -342,7 +342,8 @@ main(){
 					url_handler ${arg/"$protocol://"}
 					;;
 				nbrowser)
-					arg=$(echo "$*" | sed "s/.*\///;s/%20/ /g")
+					arg=$(echo "$*" | sed "s/%20/ /g")
+					echo $arg
 					nbrowser ${arg/"$protocol://"}
 					;;
 				*)
