@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.7
+# nbrowser v0.8
 # Requires bash 4+
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
@@ -343,7 +343,6 @@ main(){
 					;;
 				nbrowser)
 					arg=$(echo "$*" | sed "s/%20/ /g")
-					echo $arg
 					nbrowser ${arg/"$protocol://"}
 					;;
 				*)
