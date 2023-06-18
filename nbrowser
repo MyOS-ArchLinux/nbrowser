@@ -75,33 +75,34 @@ fi
 ## keep the first place to special action
 browser_count=1
 
+add_browser(){
+	local browser_name="${1:?}"
+	local browser_path="${2:?}"
+	browser_count=$((browser_count+1))
+	installed_browsers[$browser_count]="${browser_name:?}	:	${browser_path:?}"
+}
+
 ## firefox based browser
-for prog in librewolf firefox icecat palemoon; do
+for prog in librewolf firefox floorp icecat palemoon; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
-		# add private window
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --private-window"
+		add_browser "$prog" "$(command -v $prog)"
+		add_browser "$prog [Private]" "$(command -v $prog) --private-window"
 	fi
 done
 
 ## chromium based browser
 for prog in google-chrome-stable chromium brave vivaldi-stable opera; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		add_browser "$prog" "$(command -v $prog)"
 		# add private window
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --incognito"
+		add_browser "$prog [Private]" "$(command -v $prog) --incognito"
 	fi
 done
 
 ## other browsers
 for prog in badwolf qutebrowser ephemeral ; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		add_browser "$prog" "$(command -v $prog)"
 	fi
 done
 
@@ -225,6 +226,17 @@ open_in_browser(){
 			;;
 	esac
 
+	if [ "${BROWSER_FG_FIRST}" = true ]; then
+		if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
+			current_win_name=$(swaymsg -t get_tree | jq -r '..|try select(.focused == true)|.window_properties.instance')
+		else
+			current_win_id=$(xdotool getactivewindow)
+			current_win_pid=$(xdotool getwindowpid "$current_win_id" )
+			current_win_name=$(ps -o comm= -p "$current_win_pid" || xdotool getwindowname "$current_win_id" )
+		fi
+		current_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; FS="	:	" } $1 ~ current_win_name {p=1; exit} END {if(p) print $1 "\t:\t" $2 }')
+		[ ! -z "${current_browser}" ] && installed_browsers[0]="${current_browser:-}"
+	fi
 	# add clipboard
 	if [ "${COPY_TO_CLIPBOARD_OPTION}" = true ]; then
 		browser_count=$((browser_count+1))
@@ -258,7 +270,7 @@ open_in_browser(){
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
 			if [ "${MULTI_URL}" = true ]; then
-				{ setsid -f $(bash -c "exec ${selected_browser} $*") >/dev/null 2>&1 ; }
+				{ setsid -f ${selected_browser} $* >/dev/null 2>&1 ; }
 			else
 				{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
 			fi
