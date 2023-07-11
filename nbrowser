@@ -35,6 +35,7 @@ ENGINES=(
 
 FIREFOX_BASED_BROWSERS=(librewolf firefox floorp icecat palemoon firedragon)
 CHROMIUM_BASED_BROWSERS=(google-chrome-stable chromium brave vivaldi-stable opera)
+OTHER_BASED_BROWSERS=(badwolf qutebrowser ephemeral)
 
 has() {
 	case "$(command -v "$1" 2>/dev/null)" in
@@ -103,7 +104,7 @@ for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
 done
 
 ## other browsers
-for prog in badwolf qutebrowser ephemeral ; do
+for prog in ${OTHER_BASED_BROWSERS[*]} ; do
 	if has "$prog" ; then
 		add_browser "$prog" "$(command -v $prog)"
 	fi
