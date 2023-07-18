@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.7
+# nbrowser v0.8
 # Requires bash 4+
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
@@ -7,6 +7,7 @@
 # shellcheck disable=SC2190,SC2086,SC1091
 
 NBROWSER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nbrowser"
+NBROWSER_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/nbrowser"
 NBROWSER_DEFAULT_SEARCH=${NBROWSER_DEFAULT_SEARCH:-duckduckgo}
 COPY_TO_CLIPBOARD_OPTION=${COPY_TO_CLIPBOARD_OPTION:-true}
 NBROWSER_SIMPLE_URL_HANDLER=${NBROWSER_SIMPLE_URL_HANDLER:-false}
@@ -32,6 +33,10 @@ ENGINES=(
 	["ytb"]="https://www.youtube.com/results?search_query="
 )
 
+FIREFOX_BASED_BROWSERS=(librewolf firefox floorp icecat palemoon firedragon)
+CHROMIUM_BASED_BROWSERS=(google-chrome-stable chromium brave vivaldi-stable opera)
+OTHER_BASED_BROWSERS=(badwolf qutebrowser ephemeral)
+
 has() {
 	case "$(command -v "$1" 2>/dev/null)" in
 		alias*|"") return 1
@@ -48,7 +53,8 @@ _notify(){
 }
 
 _choose(){
-	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit -filter "${@:-}"
+	[ -z "${2}" ] || local ROFI_ADD_ARGS=${2:-}
+	rofi -dmenu -i -p 'Select Item ' -theme-str 'window {width: 95%;}' -l 10 -no-click-to-exit ${ROFI_ADD_ARGS:-} -filter "${1:-}"
 }
 
 _input(){
@@ -73,33 +79,34 @@ fi
 ## keep the first place to special action
 browser_count=1
 
+add_browser(){
+	local browser_name="${1:?}"
+	local browser_path="${2:?}"
+	browser_count=$((browser_count+1))
+	installed_browsers[$browser_count]="${browser_name:?}	:	${browser_path:?}"
+}
+
 ## firefox based browser
-for prog in librewolf firefox icecat palemoon; do
+for prog in ${FIREFOX_BASED_BROWSERS[*]}; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
-		# add private window
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --private-window"
+		add_browser "$prog" "$(command -v $prog)"
+		add_browser "$prog [Private]" "$(command -v $prog) --private-window"
 	fi
 done
 
 ## chromium based browser
-for prog in google-chrome-stable chromium brave vivaldi-stable opera; do
+for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		add_browser "$prog" "$(command -v $prog)"
 		# add private window
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog [Private]	:	$(command -v $prog) --incognito"
+		add_browser "$prog [Private]" "$(command -v $prog) --incognito"
 	fi
 done
 
 ## other browsers
-for prog in badwolf qutebrowser ephemeral ; do
+for prog in ${OTHER_BASED_BROWSERS[*]} ; do
 	if has "$prog" ; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="$prog	:	$(command -v $prog)"
+		add_browser "$prog" "$(command -v $prog)"
 	fi
 done
 
@@ -142,7 +149,7 @@ if ! has _copy_to_clipboard ;then
 fi
 
 open_a_browser(){
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -217,6 +224,23 @@ open_picture_with(){
 }
 
 open_in_browser(){
+	case "$1" in
+		"-m")
+			local MULTI_URL=true;shift
+			;;
+	esac
+
+	if [ "${BROWSER_FG_FIRST}" = true ]; then
+		if [ "${XDG_SESSION_TYPE}" = "wayland" ]; then
+			current_win_name=$(swaymsg -t get_tree | jq -r '..|try select(.focused == true)|.window_properties.instance')
+		else
+			current_win_id=$(xdotool getactivewindow)
+			current_win_pid=$(xdotool getwindowpid "$current_win_id" )
+			current_win_name=$(ps -o comm= -p "$current_win_pid" || xdotool getwindowname "$current_win_id" )
+		fi
+		current_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; FS="	:	" } $1 ~ current_win_name {p=1; exit} END {if(p) print $1 "\t:\t" $2 }')
+		[ ! -z "${current_browser}" ] && installed_browsers[0]="${current_browser:-}"
+	fi
 	# add clipboard
 	if [ "${COPY_TO_CLIPBOARD_OPTION}" = true ]; then
 		browser_count=$((browser_count+1))
@@ -224,7 +248,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
+	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -249,7 +273,11 @@ open_in_browser(){
 			;;
 		*)
 			selected_browser=$(printf '%s' "${selected_browser}" | awk '{split($0,a,": "); print a[2]}')
-			{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
+			if [ "${MULTI_URL}" = true ]; then
+				{ setsid -f ${selected_browser} $* >/dev/null 2>&1 ; }
+			else
+				{ setsid -f $(bash -c "exec ${selected_browser} \"$*\"") >/dev/null 2>&1 ; }
+			fi
 			;;
 	esac
 }
@@ -266,7 +294,7 @@ url_handler(){
 		open_in_browser "$cleanurl"
 	else
 		case "$cleanurl" in
-			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8)
+			**ted.com/**|*youtube.com/watch*|*youtube.com/playlist*|*youtu.be*|*//www.twitch.tv/*|*//twitch.tv/*|*.mp4|*.mkv|*.webm|*.mp3|*.flac|*.opus|*mp3?source*|*gifv|*.m3u|*.m3u8|*.mov)
 				open_video_with "$cleanurl"
 				;;
 			*png|*jpg|*jpe|*jpeg|*gif|*.jpg\?r=*)
@@ -315,6 +343,7 @@ main(){
 					url_handler ${arg/"$protocol://"}
 					;;
 				nbrowser)
+					arg=$(echo "$*" | sed "s/%20/ /g")
 					nbrowser ${arg/"$protocol://"}
 					;;
 				*)
