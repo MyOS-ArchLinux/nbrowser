@@ -289,7 +289,7 @@ open_in_browser(){
 				nbrowser_ubang "$*"
 			fi
 			;;
-		"Copy to clipboard"*": ")
+		"Copy to clipboard"*":"*)
 			_copy_to_clipboard "$*"
 			;;
 		*)
