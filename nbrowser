@@ -93,6 +93,21 @@ add_browser(){
 	BROWSER_ARGS[${_browser_id}]="${4:-}"
 }
 
+# use: rm_browser(browse_id, browser_id...)
+rm_browser(){
+	local _browsers_to_rm=($@)
+	local _browser_id
+	declare -A REMOVE_LIST
+	for _browser_id in "${_browsers_to_rm[@]}" ; do REMOVE_LIST[$_browser_id]=1 ; done
+	for k in "${!BROWSER_LIST[@]}" ; do
+		if [ "${REMOVE_LIST[${BROWSER_LIST[$k]}]-}" ] ; then
+			unset "BROWSER_NAME[${BROWSER_LIST[$k]}]" ; unset "BROWSER_PATH[${BROWSER_LIST[$k]}]"
+			unset "BROWSER_ARGS[${BROWSER_LIST[$k]}]" ; unset 'BROWSER_LIST[k]'
+		fi
+	done
+	BROWSER_LIST=("${BROWSER_LIST[@]}")
+}
+
 list_browsers(){
 	local _browser_id
 	for _browser_id in "${BROWSER_LIST[@]}" ; do
