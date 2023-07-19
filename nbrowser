@@ -38,7 +38,7 @@ ENGINES=(
 )
 
 FIREFOX_BASED_BROWSERS=(LibreWolf FireFox Floorp IceCat Palemoon FireDragon)
-CHROMIUM_BASED_BROWSERS=(google-chrome-stable Chromium Brave Vivaldi-stable Opera)
+CHROMIUM_BASED_BROWSERS=(google-chrome-stable Chromium Brave Vivaldi-Stable Opera)
 OTHER_BASED_BROWSERS=(BadWolf qutebrowser Ephemeral)
 
 has() {
@@ -94,10 +94,19 @@ add_browser(){
 }
 
 list_browsers(){
+	local _browser_id
 	for _browser_id in "${BROWSER_LIST[@]}" ; do
 		[ -z "${BROWSER_NAME[${_browser_id}]}" ] && continue
 		echo "${BROWSER_NAME[${_browser_id}]}	:	${BROWSER_PATH[${_browser_id}]} ${BROWSER_ARGS[${_browser_id}]}"
 	done | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t'
+}
+
+list_browsers_table(){
+	local _browser_id
+	for _browser_id in "${BROWSER_LIST[@]}" ; do
+		[ -z "${BROWSER_NAME[${_browser_id}]}" ] && continue
+		echo "| - ${_browser_id}	| ${BROWSER_NAME[${_browser_id}]}	: ${BROWSER_PATH[${_browser_id}]}	| ${BROWSER_ARGS[${_browser_id}]:-}	|"
+	done | awk '!a[$0]++' | column -t -s $'\t'
 }
 
 ## firefox based browser
@@ -452,6 +461,13 @@ main(){
 		url_handler "https://duckduckgo.com/?q=$*"
 	fi
 }
+
+case "${@}" in
+	--ls-browsers|-lsb)
+		list_browsers_table
+		exit
+		;;
+esac
 
 if [ -z "$1" ]; then
 	open_a_browser;
