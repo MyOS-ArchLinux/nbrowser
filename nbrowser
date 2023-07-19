@@ -170,7 +170,7 @@ if ! has _copy_to_clipboard ;then
 fi
 
 open_a_browser(){
-	selected_browser=$(list_browsers | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
+	selected_browser=$(list_browsers | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "${#BROWSER_NAME[@]}")
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -269,7 +269,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(list_browsers | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
+	selected_browser=$(list_browsers | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "${#BROWSER_NAME[@]}" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
