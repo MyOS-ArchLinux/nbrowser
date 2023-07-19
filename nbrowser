@@ -14,6 +14,10 @@ NBROWSER_SIMPLE_URL_HANDLER=${NBROWSER_SIMPLE_URL_HANDLER:-false}
 
 declare -A ENGINES
 
+declare -A BROWSER_NAME
+declare -A BROWSER_PATH
+declare -A BROWSER_ARGS
+
 ENGINES=(
 	["google"]="https://www.google.com/search?q="
 	["g"]="https://www.google.com/search?q="
@@ -33,9 +37,9 @@ ENGINES=(
 	["ytb"]="https://www.youtube.com/results?search_query="
 )
 
-FIREFOX_BASED_BROWSERS=(librewolf firefox floorp icecat palemoon firedragon)
-CHROMIUM_BASED_BROWSERS=(google-chrome-stable chromium brave vivaldi-stable opera)
-OTHER_BASED_BROWSERS=(badwolf qutebrowser ephemeral)
+FIREFOX_BASED_BROWSERS=(LibreWolf FireFox Floorp IceCat Palemoon FireDragon)
+CHROMIUM_BASED_BROWSERS=(google-chrome-stable Chromium Brave Vivaldi-stable Opera)
+OTHER_BASED_BROWSERS=(BadWolf qutebrowser Ephemeral)
 
 has() {
 	case "$(command -v "$1" 2>/dev/null)" in
@@ -79,34 +83,42 @@ fi
 ## keep the first place to special action
 browser_count=1
 
+# use: add_browser( browser_id, browser_name, browser_path, browser_args )
 add_browser(){
-	local browser_name="${1:?}"
-	local browser_path="${2:?}"
 	browser_count=$((browser_count+1))
-	installed_browsers[$browser_count]="${browser_name:?}	:	${browser_path:?}"
+	local _browser_id="${1}"
+	BROWSER_LIST[${5:-$browser_count}]=${_browser_id}
+	BROWSER_NAME[${_browser_id}]="${2:-$_browser_id}"
+	BROWSER_PATH[${_browser_id}]="${3:-$(command -v $_browser_id )}"
+	BROWSER_ARGS[${_browser_id}]="${4:-}"
+}
+
+list_browsers(){
+	for _browser_id in "${BROWSER_LIST[@]}" ; do
+		[ -z "${BROWSER_NAME[${_browser_id}]}" ] && continue
+		echo "${BROWSER_NAME[${_browser_id}]}	:	${BROWSER_PATH[${_browser_id}]} ${BROWSER_ARGS[${_browser_id}]}"
+	done | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t'
 }
 
 ## firefox based browser
 for prog in ${FIREFOX_BASED_BROWSERS[*]}; do
-	if has "$prog" ; then
-		add_browser "$prog" "$(command -v $prog)"
-		add_browser "$prog [Private]" "$(command -v $prog) --private-window"
+	if has "${prog,,}" ; then
+		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
+		add_browser "${prog,,}_prv" "${prog} [Private]" "$(command -v ${prog,,})" "--private-window"
 	fi
 done
-
 ## chromium based browser
 for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
-	if has "$prog" ; then
-		add_browser "$prog" "$(command -v $prog)"
-		# add private window
-		add_browser "$prog [Private]" "$(command -v $prog) --incognito"
+	if has "${prog,,}" ; then
+		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
+		add_browser "${prog,,}_prv" "${prog} [Private]" "$(command -v ${prog,,})" "--incognito"
 	fi
 done
 
 ## other browsers
 for prog in ${OTHER_BASED_BROWSERS[*]} ; do
-	if has "$prog" ; then
-		add_browser "$prog" "$(command -v $prog)"
+	if has "${prog,,}" ; then
+		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
 	fi
 done
 
@@ -149,7 +161,7 @@ if ! has _copy_to_clipboard ;then
 fi
 
 open_a_browser(){
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
+	selected_browser=$(list_browsers | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "$((browser_count-1))")
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -238,17 +250,17 @@ open_in_browser(){
 			current_win_pid=$(xdotool getwindowpid "$current_win_id" )
 			current_win_name=$(ps -o comm= -p "$current_win_pid" || xdotool getwindowname "$current_win_id" )
 		fi
-		current_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; FS="	:	" } $1 ~ current_win_name {p=1; exit} END {if(p) print $1 "\t:\t" $2 }')
-		[ ! -z "${current_browser}" ] && installed_browsers[0]="${current_browser:-}"
+#		current_browser=$(list_browsers | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; } $1 ~ current_win_name {p=1; exit} END {if(p) print $1}')
+#		notify-send "current_browser: $current_browser"
+		[ ! -z "${current_win_name}" ] && BROWSER_LIST[1]="${current_win_name}"
 	fi
 	# add clipboard
 	if [ "${COPY_TO_CLIPBOARD_OPTION}" = true ]; then
-		browser_count=$((browser_count+1))
-		installed_browsers[$browser_count]="Copy to clipboard"
+		add_browser "copy_to_clipboard" "Copy to clipboard" " " " " ""
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(printf "%s\n" "${installed_browsers[@]}" | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t' | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
+	selected_browser=$(list_browsers | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "$((browser_count-1))" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -316,10 +328,10 @@ main(){
 	if [[ -e "${arg}" ]]; then
 		case "${arg}" in
 			*.pdf)
-				[ -z "${NBROWSER_PDF_VIEWER}" ]	|| installed_browsers[0]="PDF Reader	:	${NBROWSER_PDF_VIEWER}"
+				[ -z "${NBROWSER_PDF_VIEWER}" ]	|| add_browser "pdf_reader" "PDF Reader" "${NBROWSER_PDF_VIEWER}" "${NBROWSER_PDF_VIEWER_ARGS:-}" "0"
 				;;
 			*)
-				[ -z "${NBROWSER_HTML_EDITOR}" ] || installed_browsers[0]="Text Editor	:	${NBROWSER_HTML_EDITOR}"
+				[ -z "${NBROWSER_HTML_EDITOR}" ]	|| add_browser "text_editor" "Text Editor" "${NBROWSER_HTML_EDITOR}" "${NBROWSER_HTML_EDITOR_ARGS:-}" "0"
 				;;
 		esac
 		open_in_browser "$*"
