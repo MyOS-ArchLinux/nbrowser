@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nbrowser v0.8
+# nbrowser v0.8.1
 # Requires bash 4+
 # author : odnar-dev <https://github.com/odnar-dev>
 # source : https://github.com/MyOS-ArchLinux/nbrowser
@@ -85,7 +85,7 @@ browser_count=1
 
 # use: add_browser( browser_id, browser_name, browser_path, browser_args )
 add_browser(){
-	browser_count=$((browser_count+1))
+	[ -z "${5}" ] && browser_count=$((browser_count+1))
 	local _browser_id="${1}"
 	BROWSER_LIST[${5:-$browser_count}]=${_browser_id}
 	BROWSER_NAME[${_browser_id}]="${2:-$_browser_id}"
