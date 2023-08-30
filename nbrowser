@@ -33,7 +33,7 @@ ENGINES=(
 	["ytb"]="https://www.youtube.com/results?search_query="
 )
 
-FIREFOX_BASED_BROWSERS=(librewolf firefox floorp icecat palemoon firedragon)
+FIREFOX_BASED_BROWSERS=(librewolf firefox firefox-developer-edition floorp icecat palemoon firedragon)
 CHROMIUM_BASED_BROWSERS=(google-chrome-stable chromium brave vivaldi-stable opera)
 OTHER_BASED_BROWSERS=(badwolf qutebrowser ephemeral)
 
