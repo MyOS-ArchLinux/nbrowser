@@ -94,7 +94,7 @@ add_browser(){
 }
 
 # use: rm_browser(browse_id, browser_id...)
-rm_browser(){
+rm_browsers(){
 	local _browsers_to_rm=($@)
 	local _browser_id
 	declare -A REMOVE_LIST
@@ -108,7 +108,7 @@ rm_browser(){
 	BROWSER_LIST=("${BROWSER_LIST[@]}")
 }
 
-list_browsers(){
+ls_browsers(){
 	local _browser_id
 	for _browser_id in "${BROWSER_LIST[@]}" ; do
 		[ -z "${BROWSER_NAME[${_browser_id}]}" ] && continue
@@ -116,7 +116,8 @@ list_browsers(){
 	done | awk '!a[$0]++' | awk 'BEGIN { RS="\n"; FS="	:	" } { print $1 "\t : " $2 }'| column -t -s $'\t'
 }
 
-list_browsers_table(){
+ls_browsers_table(){
+	add_browser "id" "browser name" "browser path" "browser args" "0"
 	local _browser_id
 	for _browser_id in "${BROWSER_LIST[@]}" ; do
 		[ -z "${BROWSER_NAME[${_browser_id}]}" ] && continue
@@ -125,14 +126,14 @@ list_browsers_table(){
 }
 
 ## firefox based browser
-for prog in ${FIREFOX_BASED_BROWSERS[*]}; do
+for prog in "${FIREFOX_BASED_BROWSERS[@]}"; do
 	if has "${prog,,}" ; then
 		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
 		add_browser "${prog,,}_prv" "${prog} [Private]" "$(command -v ${prog,,})" "--private-window"
 	fi
 done
 ## chromium based browser
-for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
+for prog in "${CHROMIUM_BASED_BROWSERS[@]}"; do
 	if has "${prog,,}" ; then
 		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
 		add_browser "${prog,,}_prv" "${prog} [Private]" "$(command -v ${prog,,})" "--incognito"
@@ -140,7 +141,7 @@ for prog in ${CHROMIUM_BASED_BROWSERS[*]}; do
 done
 
 ## other browsers
-for prog in ${OTHER_BASED_BROWSERS[*]} ; do
+for prog in "${OTHER_BASED_BROWSERS[@]}" ; do
 	if has "${prog,,}" ; then
 		add_browser "${prog,,}" "${prog}" "$(command -v ${prog,,})"
 	fi
@@ -185,7 +186,7 @@ if ! has _copy_to_clipboard ;then
 fi
 
 open_a_browser(){
-	selected_browser=$(list_browsers | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "${#BROWSER_NAME[@]}")
+	selected_browser=$(ls_browsers | rofi -dmenu -p 'nbrowser' -i -format "i s" -l "${#BROWSER_NAME[@]}")
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -274,7 +275,7 @@ open_in_browser(){
 			current_win_pid=$(xdotool getwindowpid "$current_win_id" )
 			current_win_name=$(ps -o comm= -p "$current_win_pid" || xdotool getwindowname "$current_win_id" )
 		fi
-#		current_browser=$(list_browsers | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; } $1 ~ current_win_name {p=1; exit} END {if(p) print $1}')
+#		current_browser=$(ls_browsers | awk -v current_win_name="${current_win_name:-}" 'BEGIN { RS="\n"; } $1 ~ current_win_name {p=1; exit} END {if(p) print $1}')
 #		notify-send "current_browser: $current_browser"
 		[ ! -z "${current_win_name}" ] && BROWSER_LIST[1]="${current_win_name}"
 	fi
@@ -284,7 +285,7 @@ open_in_browser(){
 		COPY_TO_CLIPBOARD_OPTION=false
 	fi
 
-	selected_browser=$(list_browsers | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "${#BROWSER_NAME[@]}" )
+	selected_browser=$(ls_browsers | rofi -dmenu -p 'Open URL with' -mesg "${@//&/&amp;}" -i -l "${#BROWSER_NAME[@]}" )
 
 	[ -z "${selected_browser}" ] && exit 0
 
@@ -479,7 +480,7 @@ main(){
 
 case "${@}" in
 	--ls-browsers|-lsb)
-		list_browsers_table
+		ls_browsers_table
 		exit
 		;;
 esac
